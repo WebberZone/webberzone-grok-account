@@ -1,0 +1,64 @@
+{
+    "name": "webberzone/webberzone-grok-account",
+    "description": "Use your SuperGrok or X Premium subscription for Grok text and image generation in the WordPress AI Client.",
+    "type": "wordpress-plugin",
+    "keywords": [
+        "ai",
+        "grok",
+        "xai",
+        "ai-client",
+        "connectors"
+    ],
+    "license": "gpl-2.0-or-later",
+    "authors": [
+        {
+            "name": "WebberZone",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "szepeviktor/phpstan-wordpress": "^2",
+        "phpstan/extension-installer": "^1",
+        "phpstan/phpstan": "^2",
+        "php-stubs/wordpress-stubs": "^6",
+        "wp-coding-standards/wpcs": "^3",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1",
+        "wordpress/php-ai-client": "^1.3"
+    },
+    "config": {
+        "autoloader-suffix": "WebberZoneGrokAccount",
+        "allow-plugins": {
+            "phpstan/extension-installer": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "php-http/discovery": false
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "phpstan": "vendor/bin/phpstan analyse --memory-limit=2048M",
+        "phpstan-baseline": "vendor/bin/phpstan analyse --memory-limit=2048M --generate-baseline",
+        "phpcs": "vendor/bin/phpcs -p -v -s --standard=phpcs.xml.dist $(find . -name '*.php' -not -path './vendor/*' -not -path './phpcompat-tools/*' -not -path './build/*')",
+        "phpcbf": "vendor/bin/phpcbf -p -v -s --standard=phpcs.xml.dist $(find . -name '*.php' -not -path './vendor/*' -not -path './phpcompat-tools/*' -not -path './build/*')",
+        "phpcompat:setup": [
+            "@php -r \"if (!is_dir('phpcompat-tools')) { mkdir('phpcompat-tools'); }\"",
+            "@php -r \"if (!file_exists('phpcompat-tools/composer.json')) { file_put_contents('phpcompat-tools/composer.json', '{\\\"name\\\":\\\"temp/phpcompat\\\",\\\"type\\\":\\\"project\\\"}'); }\"",
+            "@composer config --working-dir=phpcompat-tools allow-plugins.dealerdirect/phpcodesniffer-composer-installer true",
+            "@composer require --working-dir=phpcompat-tools --dev --quiet --no-interaction squizlabs/php_codesniffer:^4.0 phpcompatibility/php-compatibility:dev-develop dealerdirect/phpcodesniffer-composer-installer:^1.0"
+        ],
+        "phpcompat": [
+            "@phpcompat:setup",
+            "phpcompat-tools/vendor/bin/phpcs -p --standard=PHPCompatibility --runtime-set testVersion 7.4-8.6 --extensions=php --ignore=*/build/*,*/vendor/*,*/node_modules/*,*/phpcompat-tools/* ."
+        ],
+        "phpcompat:clean": "rm -rf phpcompat-tools",
+        "test": [
+            "@phpcs",
+            "@phpcompat",
+            "@phpstan"
+        ],
+        "zip": "./build-zip.sh"
+    }
+}
