@@ -79,6 +79,7 @@ class Token_Store {
 	public static function clear() {
 		delete_option( self::OPTION );
 		delete_transient( Model_Directory::CACHE_KEY );
+		delete_transient( Model_Directory::FAILED_KEY );
 	}
 
 	/**

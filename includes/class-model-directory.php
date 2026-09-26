@@ -37,6 +37,13 @@ class Model_Directory implements ModelMetadataDirectoryInterface {
 	const CACHE_KEY = 'wzgka_models';
 
 	/**
+	 * Transient set when the live model list could not be fetched, to avoid retrying on every request.
+	 *
+	 * @var string
+	 */
+	const FAILED_KEY = 'wzgka_models_failed';
+
+	/**
 	 * Models used when the live list is unavailable, as ID => type.
 	 *
 	 * @var array<string, string>
@@ -107,10 +114,13 @@ class Model_Directory implements ModelMetadataDirectoryInterface {
 		if ( is_array( $cached ) && $cached ) {
 			return $cached;
 		}
-		$models = $this->fetch_live_models();
+		$models = get_transient( self::FAILED_KEY ) ? array() : $this->fetch_live_models();
 		if ( $models ) {
 			set_transient( self::CACHE_KEY, $models, 12 * HOUR_IN_SECONDS );
 			return $models;
+		}
+		if ( Token_Store::is_connected() ) {
+			set_transient( self::FAILED_KEY, 1, 10 * MINUTE_IN_SECONDS );
 		}
 
 		/**

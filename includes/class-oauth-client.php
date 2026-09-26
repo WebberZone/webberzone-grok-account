@@ -137,7 +137,7 @@ abstract class OAuth_Client {
 	 * @throws RuntimeException When not connected or the refresh fails.
 	 */
 	public static function refresh( $force ) {
-		$before = Token_Store::get();
+		$before = static::fresh_tokens();
 		if ( null === $before ) {
 			throw new RuntimeException( esc_html( self::not_connected_message() ) );
 		}
@@ -145,11 +145,11 @@ abstract class OAuth_Client {
 		if ( ! static::acquire_lock() ) {
 			for ( $i = 0; $i < 40; $i++ ) {
 				usleep( 250000 );
-				$current = Token_Store::get();
+				$current = static::fresh_tokens();
 				if ( null !== $current && $current['access_token'] !== $before['access_token'] ) {
 					return $current;
 				}
-				if ( ! get_option( static::LOCK_OPTION ) ) {
+				if ( ! static::lock_held() ) {
 					break;
 				}
 			}
@@ -159,7 +159,7 @@ abstract class OAuth_Client {
 		}
 
 		try {
-			$tokens = Token_Store::get();
+			$tokens = static::fresh_tokens();
 			if ( null === $tokens ) {
 				throw new RuntimeException( esc_html( self::not_connected_message() ) );
 			}
@@ -170,6 +170,7 @@ abstract class OAuth_Client {
 			$response = static::request_refresh( $tokens );
 			$status   = (int) wp_remote_retrieve_response_code( $response );
 			if ( 400 === $status || 401 === $status ) {
+				Token_Store::clear();
 				throw new RuntimeException(
 					esc_html(
 						sprintf(
@@ -182,7 +183,7 @@ abstract class OAuth_Client {
 			}
 			return static::store_tokens( static::decode( $response, $status ), $tokens );
 		} finally {
-			delete_option( static::LOCK_OPTION );
+			static::release_lock();
 		}
 	}
 
@@ -223,7 +224,10 @@ abstract class OAuth_Client {
 	}
 
 	/**
-	 * Takes the refresh lock. add_option() is atomic because option_name is unique.
+	 * Takes the refresh lock.
+	 *
+	 * Uses INSERT IGNORE directly: add_option() upserts and trusts the per-request option cache, so it is not atomic.
+	 * An expired lock is removed first, so a crashed request cannot hold it for more than 30 seconds.
 	 *
 	 * @since 1.0.0
 	 *
@@ -232,14 +236,48 @@ abstract class OAuth_Client {
 	 * @return bool Whether the lock was acquired.
 	 */
 	protected static function acquire_lock() {
-		if ( add_option( static::LOCK_OPTION, time() + 30, '', false ) ) {
-			return true;
-		}
-		if ( (int) get_option( static::LOCK_OPTION ) < time() ) {
-			delete_option( static::LOCK_OPTION );
-			return add_option( static::LOCK_OPTION, time() + 30, '', false );
-		}
-		return false;
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value < %d", static::LOCK_OPTION, time() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$acquired = (bool) $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'off')", static::LOCK_OPTION, (string) ( time() + 30 ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		wp_cache_delete( static::LOCK_OPTION, 'options' );
+		return $acquired;
+	}
+
+	/**
+	 * Whether another request holds the refresh lock, read from the database rather than the option cache.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @phpstan-impure
+	 *
+	 * @return bool
+	 */
+	protected static function lock_held() {
+		global $wpdb;
+		return null !== $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", static::LOCK_OPTION ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	}
+
+	/**
+	 * Releases the refresh lock.
+	 *
+	 * @since 1.0.0
+	 */
+	protected static function release_lock() {
+		global $wpdb;
+		$wpdb->delete( $wpdb->options, array( 'option_name' => static::LOCK_OPTION ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		wp_cache_delete( static::LOCK_OPTION, 'options' );
+	}
+
+	/**
+	 * Reads the tokens from the database, bypassing this request's option cache, which another request may have made stale.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return array|null
+	 */
+	protected static function fresh_tokens() {
+		wp_cache_delete( Token_Store::OPTION, 'options' );
+		return Token_Store::get();
 	}
 
 	/**
