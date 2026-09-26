@@ -13,7 +13,7 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 /**
- * Settings → Grok Account page, plus the AJAX endpoints used by it and the Connectors card.
+ * Settings page for the provider, plus the AJAX endpoints used by it and the Connectors card.
  *
  * @since 1.0.0
  */
@@ -25,7 +25,7 @@ class Admin {
 	 *
 	 * @var string
 	 */
-	const PAGE = 'grok-account';
+	const PAGE = PROVIDER_ID;
 
 	/**
 	 * Nonce action shared by all AJAX and form requests.
@@ -55,13 +55,7 @@ class Admin {
 	 * @since 1.0.0
 	 */
 	public static function add_page() {
-		add_options_page(
-			__( 'Grok Account', 'webberzone-grok-account' ),
-			__( 'Grok Account', 'webberzone-grok-account' ),
-			'manage_options',
-			self::PAGE,
-			array( __CLASS__, 'render' )
-		);
+		add_options_page( Config::label(), Config::label(), 'manage_options', self::PAGE, array( __CLASS__, 'render' ) );
 	}
 
 	/**
@@ -78,12 +72,18 @@ class Admin {
 	}
 
 	/**
-	 * Outputs the note on which subscriptions can sign in.
+	 * Escapes text and turns its <a></a> placeholder into a link to the given URL.
 	 *
 	 * @since 1.0.0
+	 *
+	 * @param  string $text Text with an optional <a></a> placeholder.
+	 * @param  string $url  Link URL. Without one, the placeholder tags are dropped.
+	 * @return string Safe HTML.
 	 */
-	public static function subscription_note() {
-		esc_html_e( 'Sign in with an xAI account that has SuperGrok or X Premium. Some plans can sign in but are refused by the API; if so, the error is shown when you generate content.', 'webberzone-grok-account' );
+	public static function linked_text( $text, $url ) {
+		$html = esc_html( $text );
+		$open = '' !== $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener noreferrer">' : '';
+		return str_replace( array( '&lt;a&gt;', '&lt;/a&gt;' ), array( $open, '' !== $url ? '</a>' : '' ), $html );
 	}
 
 	/**
@@ -96,13 +96,14 @@ class Admin {
 			return;
 		}
 		$tokens = Token_Store::get();
+		$note   = Config::note();
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Grok Account', 'webberzone-grok-account' ); ?></h1>
-			<p><?php esc_html_e( 'Use your SuperGrok or X Premium subscription for Grok text and image generation in the WordPress AI Client, instead of an xAI API key.', 'webberzone-grok-account' ); ?></p>
+			<h1><?php echo esc_html( Config::label() ); ?></h1>
+			<p><?php echo esc_html( Config::intro() ); ?></p>
 
 		<?php if ( ! is_ready() ) : ?>
-				<div class="notice notice-error inline"><p><?php esc_html_e( 'WordPress 7.0 or later, or a compatible version of the WordPress AI Client, is required.', 'webberzone-grok-account' ); ?></p></div>
+				<div class="notice notice-error inline"><p><?php echo esc_html( Config::requirements() ); ?></p></div>
 		<?php endif; ?>
 
 		<?php if ( isset( $_GET['disconnected'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only flag. ?>
@@ -112,8 +113,9 @@ class Admin {
 		<?php if ( $tokens ) : ?>
 				<table class="form-table" role="presentation">
 					<tr><th scope="row"><?php esc_html_e( 'Status', 'webberzone-grok-account' ); ?></th><td><strong style="color:#008a20"><?php esc_html_e( 'Connected', 'webberzone-grok-account' ); ?></strong></td></tr>
-					<tr><th scope="row"><?php esc_html_e( 'Account', 'webberzone-grok-account' ); ?></th><td><?php echo esc_html( $tokens['email'] ? $tokens['email'] : '—' ); ?></td></tr>
-					<tr><th scope="row"><?php esc_html_e( 'Name', 'webberzone-grok-account' ); ?></th><td><?php echo esc_html( $tokens['name'] ? $tokens['name'] : '—' ); ?></td></tr>
+			<?php foreach ( Config::account_rows( $tokens ) as $label => $value ) : ?>
+						<tr><th scope="row"><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( '' !== $value ? $value : '—' ); ?></td></tr>
+			<?php endforeach; ?>
 					<tr><th scope="row"><?php esc_html_e( 'Last token update', 'webberzone-grok-account' ); ?></th><td><?php echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $tokens['updated_at'] ) ); ?></td></tr>
 				</table>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -122,10 +124,10 @@ class Admin {
 			<?php submit_button( __( 'Disconnect', 'webberzone-grok-account' ), 'secondary', 'submit', false ); ?>
 				</form>
 			<?php else : ?>
-				<p><?php self::subscription_note(); ?></p>
-				<p><button type="button" class="button button-primary" id="wzgka-connect"><?php esc_html_e( 'Sign in with xAI', 'webberzone-grok-account' ); ?></button></p>
+				<p><?php echo self::linked_text( $note['text'], $note['url'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped in linked_text(). ?></p>
+				<p><button type="button" class="button button-primary" id="wzgka-connect"><?php echo esc_html( Config::sign_in_label() ); ?></button></p>
 				<div id="wzgka-flow" hidden>
-					<p><?php esc_html_e( '1. Open this page and sign in to xAI:', 'webberzone-grok-account' ); ?> <a id="wzgka-url" href="#" target="_blank" rel="noopener noreferrer"></a></p>
+					<p id="wzgka-step"></p>
 					<p><?php esc_html_e( '2. Enter this code:', 'webberzone-grok-account' ); ?></p>
 					<p><code id="wzgka-code" style="font-size:2em;padding:.4em .6em;letter-spacing:.1em;user-select:all"></code></p>
 					<p id="wzgka-status" class="description"></p>
@@ -135,6 +137,7 @@ class Admin {
 				( function () {
 					const ajax = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
 					const nonce = <?php echo wp_json_encode( wp_create_nonce( self::NONCE ) ); ?>;
+					const stepText = <?php echo wp_json_encode( Config::device_step() ); ?>;
 					const $ = ( id ) => document.getElementById( id );
 					const call = ( action ) => fetch( ajax, {
 						method: 'POST',
@@ -163,8 +166,13 @@ class Admin {
 						$( 'wzgka-error' ).hidden = true;
 						call( 'wzgka_start' ).then( ( res ) => {
 							if ( ! res.success ) return fail( res.data );
-							$( 'wzgka-url' ).href = res.data.verification_url;
-							$( 'wzgka-url' ).textContent = res.data.verification_url;
+							const link = document.createElement( 'a' );
+							link.href = res.data.verification_url;
+							link.target = '_blank';
+							link.rel = 'noopener noreferrer';
+							const parts = stepText.split( /<\/?a>/ );
+							link.textContent = parts[ 1 ] || res.data.verification_url;
+							$( 'wzgka-step' ).replaceChildren( document.createTextNode( parts[ 0 ] || '' ), link, document.createTextNode( parts[ 2 ] || '' ) );
 							$( 'wzgka-code' ).textContent = res.data.user_code;
 							$( 'wzgka-status' ).textContent = <?php echo wp_json_encode( __( 'Waiting for you to approve the sign-in… (the code expires in 15 minutes)', 'webberzone-grok-account' ) ); ?>;
 							$( 'wzgka-flow' ).hidden = false;
@@ -218,7 +226,7 @@ class Admin {
 	}
 
 	/**
-	 * AJAX: disconnects the Grok account.
+	 * AJAX: disconnects the account.
 	 *
 	 * @since 1.0.0
 	 */
@@ -230,7 +238,7 @@ class Admin {
 	}
 
 	/**
-	 * Form handler: disconnects the Grok account from the settings page.
+	 * Form handler: disconnects the account from the settings page.
 	 *
 	 * @since 1.0.0
 	 */

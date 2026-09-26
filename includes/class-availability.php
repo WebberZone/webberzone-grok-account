@@ -15,7 +15,7 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 /**
- * Reports the provider as configured when a Grok account is connected.
+ * Reports the provider as configured when an account is connected.
  *
  * @since 1.0.0
  */

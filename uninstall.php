@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall WebberZone Grok Account.
+ * Uninstall routine: removes the stored tokens and caches.
  *
  * @package WebberZone\Grok_Account
  */

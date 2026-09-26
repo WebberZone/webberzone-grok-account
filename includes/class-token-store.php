@@ -1,6 +1,6 @@
 <?php
 /**
- * Encrypted storage for the Grok OAuth tokens.
+ * Encrypted storage for the OAuth tokens.
  *
  * @package WebberZone\Grok_Account
  */
@@ -13,7 +13,7 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 /**
- * Stores the Grok tokens in a single autoload-off option, encrypted with libsodium.
+ * Stores the OAuth tokens in a single autoload-off option, encrypted with libsodium.
  *
  * The key is derived from the site's auth salt, so changing the salts in wp-config.php disconnects the account.
  *
@@ -82,7 +82,7 @@ class Token_Store {
 	}
 
 	/**
-	 * Whether a Grok account is connected.
+	 * Whether an account is connected.
 	 *
 	 * @since 1.0.0
 	 *
