@@ -88,8 +88,12 @@ class Admin {
 	 */
 	public static function ajax_cancel() {
 		self::verify();
-		OAuth::cancel_device_flow();
-		wp_send_json_success();
+		try {
+			OAuth::cancel_device_flow();
+			wp_send_json_success();
+		} catch ( \Exception $e ) {
+			wp_send_json_error( html_entity_decode( $e->getMessage(), ENT_QUOTES ) );
+		}
 	}
 
 	/**
@@ -99,9 +103,12 @@ class Admin {
 	 */
 	public static function ajax_disconnect() {
 		self::verify();
-		OAuth::cancel_device_flow();
-		Token_Store::clear();
-		wp_send_json_success();
+		try {
+			OAuth::disconnect();
+			wp_send_json_success();
+		} catch ( \Exception $e ) {
+			wp_send_json_error( html_entity_decode( $e->getMessage(), ENT_QUOTES ) );
+		}
 	}
 
 	/**

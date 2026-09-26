@@ -65,33 +65,38 @@ class OAuth extends OAuth_Client {
 	 * @throws RuntimeException When xAI rejects the request.
 	 */
 	public static function start_device_flow() {
-		$response = static::post_form(
-			self::ISSUER . '/oauth2/device/code',
-			array(
-				'client_id' => self::CLIENT_ID,
-				'scope'     => self::SCOPE,
-			)
-		);
-		$body     = static::decode( $response );
+		return static::with_lock(
+			static function () {
+				$response = static::post_form(
+					self::ISSUER . '/oauth2/device/code',
+					array(
+						'client_id' => self::CLIENT_ID,
+						'scope'     => self::SCOPE,
+					)
+				);
+				$body     = static::decode( $response );
 
-		if ( empty( $body['device_code'] ) || empty( $body['user_code'] ) || empty( $body['verification_uri'] ) ) {
-			throw new RuntimeException( esc_html__( 'Unexpected response when requesting a device code.', 'webberzone-grok-account' ) );
-		}
+				if ( empty( $body['device_code'] ) || empty( $body['user_code'] ) || empty( $body['verification_uri'] ) ) {
+					throw new RuntimeException( esc_html__( 'Unexpected response when requesting a device code.', 'webberzone-grok-account' ) );
+				}
 
-		$ttl  = min( static::FLOW_TTL, max( 60, (int) ( $body['expires_in'] ?? static::FLOW_TTL ) ) );
-		$flow = array(
-			'device_code' => (string) $body['device_code'],
-			'interval'    => max( 5, (int) ( $body['interval'] ?? 5 ) ),
-			'expires_at'  => time() + $ttl,
-			'last_poll'   => 0,
-		);
-		set_transient( static::flow_key(), $flow, $ttl );
+				$ttl  = min( static::FLOW_TTL, max( 60, (int) ( $body['expires_in'] ?? static::FLOW_TTL ) ) );
+				$flow = array(
+					'flow_id'     => wp_generate_uuid4(),
+					'device_code' => (string) $body['device_code'],
+					'interval'    => max( 5, (int) ( $body['interval'] ?? 5 ) ),
+					'expires_at'  => time() + $ttl,
+					'last_poll'   => 0,
+				);
+				set_transient( static::flow_key(), $flow, $ttl );
 
-		return array(
-			'user_code'        => (string) $body['user_code'],
-			'verification_url' => (string) ( $body['verification_uri_complete'] ?? $body['verification_uri'] ),
-			'interval'         => $flow['interval'],
-			'expires_at'       => $flow['expires_at'],
+				return array(
+					'user_code'        => (string) $body['user_code'],
+					'verification_url' => (string) ( $body['verification_uri_complete'] ?? $body['verification_uri'] ),
+					'interval'         => $flow['interval'],
+					'expires_at'       => $flow['expires_at'],
+				);
+			}
 		);
 	}
 
@@ -126,22 +131,41 @@ class OAuth extends OAuth_Client {
 		$error    = is_array( $body ) && is_string( $body['error'] ?? null ) ? $body['error'] : '';
 
 		if ( 'authorization_pending' === $error || 'slow_down' === $error ) {
-			if ( 'slow_down' === $error ) {
-				$flow['interval'] += 5;
-			}
-			set_transient( static::flow_key(), $flow, max( 1, $flow['expires_at'] - time() ) );
+			static::with_lock(
+				static function () use ( $flow, $error ) {
+					$current = static::fresh_flow();
+					if ( ! is_array( $current ) || ! isset( $current['flow_id'] ) || $current['flow_id'] !== $flow['flow_id'] ) {
+						return;
+					}
+					if ( 'slow_down' === $error ) {
+						$current['interval'] += 5;
+					}
+					$current['last_poll'] = time();
+					set_transient( static::flow_key(), $current, max( 1, $current['expires_at'] - time() ) );
+				}
+			);
 			return 'pending';
 		}
 
-		delete_transient( static::flow_key() );
 		if ( 'access_denied' === $error ) {
+			static::discard_flow( $flow );
 			throw new RuntimeException( esc_html__( 'The sign-in was declined.', 'webberzone-grok-account' ) );
 		}
 		if ( 'expired_token' === $error ) {
+			static::discard_flow( $flow );
 			throw new RuntimeException( esc_html__( 'The sign-in code expired. Start again.', 'webberzone-grok-account' ) );
 		}
 
-		static::store_tokens( static::decode( $response, $status ) );
+		$tokens = static::decode( $response, $status );
+		static::with_lock(
+			static function () use ( $flow, $tokens ) {
+				if ( ! static::flow_is_current( $flow ) ) {
+					throw new RuntimeException( esc_html__( 'The sign-in was cancelled or replaced.', 'webberzone-grok-account' ) );
+				}
+				delete_transient( static::flow_key() );
+				static::store_tokens( $tokens );
+			}
+		);
 		return 'connected';
 	}
 

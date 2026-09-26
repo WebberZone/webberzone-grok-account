@@ -95,7 +95,96 @@ abstract class OAuth_Client {
 	 * @since 1.0.0
 	 */
 	public static function cancel_device_flow() {
-		delete_transient( static::flow_key() );
+		static::with_lock(
+			static function () {
+				delete_transient( static::flow_key() );
+			}
+		);
+	}
+
+	/**
+	 * Disconnects the account and abandons the pending flow.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function disconnect() {
+		static::with_lock(
+			static function () {
+				delete_transient( static::flow_key() );
+				Token_Store::clear();
+			}
+		);
+	}
+
+	/**
+	 * Runs an account state change while holding the shared lock.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param  callable $callback State change to perform.
+	 * @return mixed Callback result.
+	 * @throws RuntimeException When the lock cannot be acquired.
+	 */
+	public static function with_lock( callable $callback ) {
+		$owner = null;
+		for ( $i = 0; $i < 120 && null === $owner; $i++ ) {
+			$owner = static::acquire_lock();
+			if ( null === $owner ) {
+				usleep( 250000 );
+			}
+		}
+		if ( null === $owner ) {
+			throw new RuntimeException( esc_html__( 'Timed out waiting for account access.', 'webberzone-grok-account' ) );
+		}
+		try {
+			return $callback();
+		} finally {
+			static::release_lock( $owner );
+		}
+	}
+
+	/**
+	 * Reads the flow without a stale per-request cache entry.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return array|false Pending flow.
+	 */
+	protected static function fresh_flow() {
+		$key = static::flow_key();
+		wp_cache_delete( $key, 'transient' );
+		wp_cache_delete( '_transient_' . $key, 'options' );
+		return get_transient( $key );
+	}
+
+	/**
+	 * Checks that a response belongs to the active flow.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param  array $flow Flow captured before the provider request.
+	 * @return bool
+	 */
+	protected static function flow_is_current( array $flow ) {
+		$current = static::fresh_flow();
+		return is_array( $current ) && isset( $flow['flow_id'], $current['flow_id'] ) && $flow['flow_id'] === $current['flow_id'];
+	}
+
+	/**
+	 * Discards a flow only if it is still active.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $flow Flow captured before the provider request.
+	 */
+	protected static function discard_flow( array $flow ) {
+		static::with_lock(
+			static function () use ( $flow ) {
+				if ( static::flow_is_current( $flow ) ) {
+					delete_transient( static::flow_key() );
+				}
+			}
+		);
 	}
 
 	/**
@@ -142,18 +231,20 @@ abstract class OAuth_Client {
 			throw new RuntimeException( esc_html( self::not_connected_message() ) );
 		}
 
-		if ( ! static::acquire_lock() ) {
-			for ( $i = 0; $i < 40; $i++ ) {
+		$owner = static::acquire_lock();
+		if ( null === $owner ) {
+			for ( $i = 0; $i < 120; $i++ ) {
 				usleep( 250000 );
 				$current = static::fresh_tokens();
 				if ( null !== $current && $current['access_token'] !== $before['access_token'] ) {
 					return $current;
 				}
-				if ( ! static::lock_held() ) {
+				$owner = static::acquire_lock();
+				if ( null !== $owner ) {
 					break;
 				}
 			}
-			if ( ! static::acquire_lock() ) {
+			if ( null === $owner ) {
 				throw new RuntimeException( esc_html__( 'Timed out waiting for a token refresh.', 'webberzone-grok-account' ) );
 			}
 		}
@@ -183,7 +274,7 @@ abstract class OAuth_Client {
 			}
 			return static::store_tokens( static::decode( $response, $status ), $tokens );
 		} finally {
-			static::release_lock();
+			static::release_lock( $owner );
 		}
 	}
 
@@ -227,44 +318,39 @@ abstract class OAuth_Client {
 	 * Takes the refresh lock.
 	 *
 	 * Uses INSERT IGNORE directly: add_option() upserts and trusts the per-request option cache, so it is not atomic.
-	 * An expired lock is removed first, so a crashed request cannot hold it for more than 30 seconds.
+	 * An expired lock is removed first, so a crashed request cannot hold it for more than 60 seconds.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @phpstan-impure
 	 *
-	 * @return bool Whether the lock was acquired.
+	 * @return string|null Lock owner when acquired.
 	 */
 	protected static function acquire_lock() {
 		global $wpdb;
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value < %d", static::LOCK_OPTION, time() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$acquired = (bool) $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'off')", static::LOCK_OPTION, (string) ( time() + 30 ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND CAST(SUBSTRING_INDEX(option_value, ':', 1) AS UNSIGNED) < %d", static::LOCK_OPTION, time() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$owner    = (string) ( time() + 60 ) . ':' . wp_generate_uuid4();
+		$acquired = (bool) $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'off')", static::LOCK_OPTION, $owner ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		wp_cache_delete( static::LOCK_OPTION, 'options' );
-		return $acquired;
-	}
-
-	/**
-	 * Whether another request holds the refresh lock, read from the database rather than the option cache.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @phpstan-impure
-	 *
-	 * @return bool
-	 */
-	protected static function lock_held() {
-		global $wpdb;
-		return null !== $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", static::LOCK_OPTION ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		return $acquired ? $owner : null;
 	}
 
 	/**
 	 * Releases the refresh lock.
 	 *
 	 * @since 1.0.0
+	 *
+	 * @param string $owner Lock owner.
 	 */
-	protected static function release_lock() {
+	protected static function release_lock( $owner ) {
 		global $wpdb;
-		$wpdb->delete( $wpdb->options, array( 'option_name' => static::LOCK_OPTION ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Atomic lock release.
+			$wpdb->options,
+			array(
+				'option_name'  => static::LOCK_OPTION,
+				'option_value' => $owner,
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		wp_cache_delete( static::LOCK_OPTION, 'options' );
 	}
 
