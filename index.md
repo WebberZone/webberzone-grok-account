@@ -34,6 +34,8 @@ permalink: /
       <p>Grok Imagine, including the higher-quality and typography-aware variants your plan offers.</p>
     </div>
   </div>
+
+  <img class="screenshot" src="{{ '/site-assets/img/screenshot-connector.png' | relative_url }}" alt="The Grok Account card on the WordPress Settings → Connectors screen, showing it connected with a Disconnect button" width="656" height="121">
 </div>
 
 <div class="home-section" style="padding-top:0;">
