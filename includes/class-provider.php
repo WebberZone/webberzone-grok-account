@@ -71,7 +71,7 @@ class Provider extends AbstractApiProvider {
 			PROVIDER_ID,
 			__( 'Grok Account', 'webberzone-grok-account' ),
 			ProviderTypeEnum::cloud(),
-			admin_url( 'options-general.php?page=' . Admin::PAGE ),
+			admin_url( 'options-connectors.php' ),
 			RequestAuthenticationMethod::apiKey(),
 			__( 'Text and image generation using your SuperGrok or X Premium subscription. Sign in with xAI; no API key needed.', 'webberzone-grok-account' ),
 			WZGKA_PLUGIN_DIR . 'assets/images/grok.svg'

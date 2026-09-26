@@ -54,28 +54,6 @@ class Config {
 	}
 
 	/**
-	 * Introduction shown on the settings page.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return string
-	 */
-	public static function intro() {
-		return __( 'Use your SuperGrok or X Premium subscription for Grok text and image generation in the WordPress AI Client, instead of an xAI API key.', 'webberzone-grok-account' );
-	}
-
-	/**
-	 * Message shown when the plugin's dependencies are missing.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return string
-	 */
-	public static function requirements() {
-		return __( 'WordPress 7.0 or later, or a compatible version of the WordPress AI Client, is required.', 'webberzone-grok-account' );
-	}
-
-	/**
 	 * Note shown before signing in. Text inside <a></a> is linked to the URL, when there is one.
 	 *
 	 * @since 1.0.0
@@ -98,23 +76,6 @@ class Config {
 	 */
 	public static function device_step() {
 		return __( '1. Open <a>the xAI device sign-in page</a> and sign in.', 'webberzone-grok-account' );
-	}
-
-	/**
-	 * Account details shown on the settings page.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param  array $tokens Token data.
-	 * @return array<string, string> Label => value.
-	 */
-	public static function account_rows( array $tokens ) {
-		$rows = array();
-		if ( ! empty( $tokens['name'] ) ) {
-			$rows[ __( 'Name', 'webberzone-grok-account' ) ] = (string) $tokens['name'];
-		}
-		$rows[ __( 'Account', 'webberzone-grok-account' ) ] = (string) ( $tokens['email'] ?? '' );
-		return $rows;
 	}
 
 	/**

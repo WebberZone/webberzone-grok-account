@@ -16,7 +16,7 @@ _License:_ [GPL-2.0+](http://www.gnu.org/licenses/gpl-2.0.html)
 
 _WebberZone Grok Account_ adds a **Grok Account** provider to the WordPress AI Client. You sign in with your xAI account (SuperGrok or X Premium) using a one-time device code, and Grok text and image generation run against your plan instead of an xAI API key.
 
-- _Sign in from Settings → Connectors:_ replaces core's API-key field with a "Sign in with xAI" card and modal. Settings → Grok Account offers the same flow.
+- _Sign in from Settings → Connectors:_ replaces core's API-key field with a "Sign in with xAI" card and modal.
 - _Device flow:_ standard OAuth 2.0 device authorization grant (RFC 8628) against `auth.x.ai`.
 - _Text generation:_ `api.x.ai/v1/chat/completions`, via the AI Client's OpenAI-compatible base classes. No other plugin required.
 - _Image generation:_ Grok Imagine via `api.x.ai/v1/images/generations`.
@@ -39,7 +39,7 @@ This plugin and its sibling ([WebberZone ChatGPT Account](https://github.com/Web
 
 - `includes/class-oauth-client.php` — refresh with locking, pending device codes, HTTP helpers
 - `includes/class-token-store.php` — encrypted token storage
-- `includes/class-admin.php` — settings page and AJAX endpoints
+- `includes/class-admin.php` — AJAX endpoints and Plugins screen link
 - `includes/class-connectors.php` — Settings → Connectors integration
 - `includes/class-availability.php`
 - `assets/js/connectors.js` — Connectors card and sign-in modal

@@ -16,7 +16,7 @@ WebberZone Grok Account adds a "Grok Account" provider to the WordPress AI Clien
 
 = Features =
 
-* Sign in from Settings → Connectors or Settings → Grok Account using a one-time device code (the standard OAuth device flow). No API key, no command-line helper, no public REST endpoint.
+* Sign in from Settings → Connectors using a one-time device code (the standard OAuth device flow). No API key, no command-line helper, no public REST endpoint.
 * Text generation with the Grok models available to your plan, including chat history, structured JSON output and function calling.
 * Image generation with Grok Imagine.
 * Tokens are stored encrypted and refreshed automatically.
