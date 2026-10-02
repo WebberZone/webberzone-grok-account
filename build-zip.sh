@@ -35,6 +35,7 @@ Gemfile
 Gemfile.lock
 favicon.ico
 /index.md
+eslint.config.*
 *.dist
 *.neon
 composer.json
