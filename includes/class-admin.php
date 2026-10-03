@@ -77,7 +77,12 @@ class Admin {
 		try {
 			wp_send_json_success( OAuth::poll_device_flow() );
 		} catch ( \Exception $e ) {
-			wp_send_json_error( html_entity_decode( $e->getMessage(), ENT_QUOTES ) );
+			wp_send_json_error(
+				array(
+					'message'   => html_entity_decode( $e->getMessage(), ENT_QUOTES ),
+					'retryable' => in_array( $e->getCode(), array( 408, 429 ), true ) || $e->getCode() >= 500,
+				)
+			);
 		}
 	}
 

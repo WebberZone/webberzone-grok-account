@@ -50,9 +50,10 @@ class Connectors {
 		if ( ! $screen || 'options-connectors' !== $screen->id || ! is_ready() || ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
+		$min_suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
 		wp_enqueue_script_module(
 			self::MODULE,
-			WZGKA_PLUGIN_URL . 'assets/js/connectors.js',
+			WZGKA_PLUGIN_URL . 'assets/js/connectors' . $min_suffix . '.js',
 			array(
 				array(
 					'id'     => '@wordpress/connectors',

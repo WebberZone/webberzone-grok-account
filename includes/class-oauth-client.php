@@ -134,7 +134,7 @@ abstract class OAuth_Client {
 			}
 		}
 		if ( null === $owner ) {
-			throw new RuntimeException( esc_html__( 'Timed out waiting for account access.', 'webberzone-grok-account' ) );
+			throw new RuntimeException( esc_html__( 'Timed out waiting for account access.', 'webberzone-grok-account' ), 503 );
 		}
 		try {
 			return $callback();
@@ -152,8 +152,10 @@ abstract class OAuth_Client {
 	 */
 	protected static function fresh_flow() {
 		$key = static::flow_key();
-		wp_cache_delete( $key, 'transient' );
-		wp_cache_delete( '_transient_' . $key, 'options' );
+		if ( ! wp_using_ext_object_cache() ) {
+			wp_cache_delete( $key, 'transient' );
+			wp_cache_delete( '_transient_' . $key, 'options' );
+		}
 		return get_transient( $key );
 	}
 
@@ -221,14 +223,19 @@ abstract class OAuth_Client {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param  bool $force Refresh even if the current token is not about to expire.
+	 * @param  bool        $force        Refresh even if the current token is not about to expire.
+	 * @param  string|null $access_token Access token rejected by the provider.
 	 * @return array Token data.
 	 * @throws RuntimeException When not connected or the refresh fails.
 	 */
-	public static function refresh( $force ) {
+	public static function refresh( $force, $access_token = null ) {
 		$before = static::fresh_tokens();
 		if ( null === $before ) {
 			throw new RuntimeException( esc_html( self::not_connected_message() ) );
+		}
+
+		if ( null !== $access_token && $before['access_token'] !== $access_token ) {
+			return $before;
 		}
 
 		$owner = static::acquire_lock();
@@ -433,7 +440,7 @@ abstract class OAuth_Client {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			throw new RuntimeException( esc_html( $response->get_error_message() ) );
+			throw new RuntimeException( esc_html( $response->get_error_message() ), 503 );
 		}
 		return $response;
 	}
@@ -465,7 +472,8 @@ abstract class OAuth_Client {
 						$status,
 						'' !== $detail ? $detail : substr( wp_strip_all_tags( $raw ), 0, 200 )
 					)
-				)
+				),
+				$status // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Numeric exception code.
 			);
 		}
 		if ( ! is_array( $body ) ) {

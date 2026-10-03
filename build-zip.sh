@@ -42,6 +42,10 @@ composer.json
 composer.lock
 phpstan-bootstrap.php
 build-zip.sh
+build-assets.js
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
 CLAUDE.md
 AGENTS.md
 EOF

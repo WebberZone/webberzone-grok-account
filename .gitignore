@@ -7,6 +7,7 @@
 /.jekyll-metadata
 
 # Tooling
+/node_modules/
 /phpcompat-tools/
 /build/
 .phpunit.result.cache

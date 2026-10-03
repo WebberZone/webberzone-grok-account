@@ -4,7 +4,7 @@ Tags: ai, grok, xai, ai client, connectors
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,5 +53,35 @@ In the `wzgka_tokens` option, encrypted with a key derived from your site's auth
 
 == Changelog ==
 
+= 1.0.1 =
+
+Release date: 3 October 2026
+
+**Changed**
+
+* Minified the Connectors script, retaining the readable version when `SCRIPT_DEBUG` is enabled.
+
+**Fixed**
+
+* Temporary network and server errors ended sign-in instead of retrying.
+* Canceled or replaced sign-ins could reconnect the account when pending responses arrived.
+* Concurrent token refreshes could time out unnecessarily.
+* The Copy button failed when clipboard access was unavailable.
+* Image models advertised unsupported PNG output and custom options.
+
 = 1.0.0 =
+
+Release date: 26 September 2026
+
+**Added**
+
 * Initial release.
+
+= Earlier versions =
+
+For the changelog of earlier versions, please refer to the [releases page on GitHub](https://github.com/WebberZone/webberzone-grok-account/releases).
+
+== Upgrade Notice ==
+
+= 1.0.1 =
+Improves sign-in reliability and corrects the advertised image-generation options. Update recommended.

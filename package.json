@@ -1,0 +1,13 @@
+{
+  "name": "@webberzone/webberzone-grok-account",
+  "version": "1.0.1",
+  "private": true,
+  "author": "WebberZone",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "build:assets": "node build-assets.js --js --no-rtl"
+  },
+  "devDependencies": {
+    "terser": "^5.51.2"
+  }
+}

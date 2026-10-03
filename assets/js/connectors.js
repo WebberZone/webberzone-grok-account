@@ -1,7 +1,7 @@
 /**
  * Account sign-in card for Settings → Connectors.
  *
- * Hand-written ES module (no build step). React and components come from the wp-* classic
+ * ES module, minified with pnpm run build:assets. React and components come from the wp-* classic
  * scripts that the Connectors page already loads; all strings are translated in PHP and passed
  * in through the module data.
  */
@@ -44,7 +44,9 @@ function call( action ) {
 		.then( ( response ) => response.json() )
 		.then( ( result ) => {
 			if ( ! result.success ) {
-				throw new Error( result.data || s.requestFailed );
+				const error = new Error( result.data?.message || result.data || s.requestFailed );
+				error.retryable = result.data?.retryable === true;
+				throw error;
 			}
 			return result.data;
 		} );
@@ -67,13 +69,14 @@ function SignInModal( { onClose, onConnected } ) {
 	const [ attempt, setAttempt ] = useState( 0 );
 	const [ copied, setCopied ] = useState( false );
 	const timer = useRef();
+	const canCopy = typeof window.navigator.clipboard?.writeText === 'function';
 
 	useEffect( () => {
 		let active = true;
 		setFlow( null );
 		setError( null );
 
-		const poll = ( interval ) => {
+		const poll = ( interval, expiresAt, failures = 0 ) => {
 			timer.current = window.setTimeout( () => {
 				call( 'poll' )
 					.then( ( status ) => {
@@ -84,17 +87,26 @@ function SignInModal( { onClose, onConnected } ) {
 							onConnected();
 							return;
 						}
-						poll( interval );
+						poll( interval, expiresAt );
 					} )
-					.catch( ( e ) => active && setError( e.message ) );
-			}, interval * 1000 );
+					.catch( ( e ) => {
+						if ( ! active ) {
+							return;
+						}
+						if ( e.retryable !== false && Date.now() < expiresAt * 1000 ) {
+							poll( interval, expiresAt, Math.min( failures + 1, 3 ) );
+							return;
+						}
+						setError( e.message );
+					} );
+			}, interval * 1000 * 2 ** failures );
 		};
 
 		call( 'start' )
 			.then( ( data ) => {
 				if ( active ) {
 					setFlow( data );
-					poll( data.interval );
+					poll( data.interval, data.expires_at );
 				}
 			} )
 			.catch( ( e ) => active && setError( e.message ) );
@@ -112,6 +124,9 @@ function SignInModal( { onClose, onConnected } ) {
 	};
 
 	const copy = () => {
+		if ( ! canCopy ) {
+			return;
+		}
 		window.navigator.clipboard
 			.writeText( flow.user_code )
 			.then( () => setCopied( true ) )
@@ -149,7 +164,7 @@ function SignInModal( { onClose, onConnected } ) {
 					{ style: { fontSize: '1.75em', padding: '0.4em 0.6em', letterSpacing: '0.1em', userSelect: 'all' } },
 					flow.user_code
 				),
-				el( Button, { variant: 'secondary', size: 'compact', onClick: copy }, copied ? s.copied : s.copy )
+				el( Button, { variant: 'secondary', size: 'compact', onClick: copy, disabled: ! canCopy }, copied ? s.copied : s.copy )
 			),
 			el( HStack, { justify: 'flex-start' }, el( Spinner ), el( Text, { variant: 'muted' }, s.waiting ) )
 		);

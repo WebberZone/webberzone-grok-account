@@ -270,9 +270,8 @@ class Model_Directory implements ModelMetadataDirectoryInterface {
 			new SupportedOption( OptionEnum::inputModalities(), array( array( ModalityEnum::text() ) ) ),
 			new SupportedOption( OptionEnum::outputModalities(), array( array( ModalityEnum::image() ) ) ),
 			new SupportedOption( OptionEnum::candidateCount() ),
-			new SupportedOption( OptionEnum::outputMimeType(), array( 'image/jpeg', 'image/png' ) ),
+			new SupportedOption( OptionEnum::outputMimeType(), array( 'image/jpeg' ) ),
 			new SupportedOption( OptionEnum::outputFileType(), array( FileTypeEnum::inline() ) ),
-			new SupportedOption( OptionEnum::customOptions() ),
 		);
 		return new ModelMetadata( $id, $id, array( CapabilityEnum::imageGeneration() ), $options );
 	}

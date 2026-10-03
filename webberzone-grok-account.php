@@ -14,7 +14,7 @@
  * Plugin Name: WebberZone Grok Account
  * Plugin URI:  https://github.com/WebberZone/webberzone-grok-account/
  * Description: Use your SuperGrok or X Premium subscription for Grok text and image generation in the WordPress AI Client, signing in with a device code instead of an xAI API key.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      WebberZone
  * Author URI:  https://webberzone.com
  * License:     GPL-2.0+
@@ -41,7 +41,7 @@ if ( ! defined( 'WPINC' ) ) {
  * @since 1.0.0
  */
 if ( ! defined( 'WZGKA_VERSION' ) ) {
-	define( 'WZGKA_VERSION', '1.0.0' );
+	define( 'WZGKA_VERSION', '1.0.1' );
 }
 
 /**
@@ -116,8 +116,8 @@ function is_ready() {
 
 	$base     = 'WordPress\\AiClient\\Providers\\OpenAiCompatibleImplementation\\';
 	$required = array(
-		$base . 'AbstractOpenAiCompatibleTextGenerationModel'  => array( 'createRequest', 'prepareGenerateTextParams' ),
-		$base . 'AbstractOpenAiCompatibleImageGenerationModel' => array( 'createRequest', 'prepareGenerateImageParams' ),
+		$base . 'AbstractOpenAiCompatibleTextGenerationModel'  => array( 'createRequest', 'prepareGenerateTextParams', 'prepareResponseFormatParam' ),
+		$base . 'AbstractOpenAiCompatibleImageGenerationModel' => array( 'createRequest', 'prepareGenerateImageParams', 'parseResponseToGenerativeAiResult' ),
 	);
 
 	$ready = class_exists( AiClient::class );
