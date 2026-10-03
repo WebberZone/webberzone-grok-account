@@ -36,7 +36,7 @@ class Provider extends AbstractApiProvider {
 	 * @since 1.0.0
 	 */
 	protected static function baseUrl(): string {
-		return 'https://api.x.ai/v1';
+		return 'https://api.x.ai/v1'; // phpcs:ignore PluginCheck.CodeAnalysis.AIProvider.DirectIntegration -- Provider registered with the WordPress AI Client.
 	}
 
 	/**

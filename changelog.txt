@@ -1,5 +1,13 @@
 == Changelog ==
 
+= 1.0.2 =
+
+Release date: 3 October 2026
+
+**Changed**
+
+* Removed the `Domain Path` header, which pointed to a missing `languages` folder.
+
 = 1.0.1 =
 
 Release date: 3 October 2026

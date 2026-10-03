@@ -14,13 +14,12 @@
  * Plugin Name: WebberZone Grok Account
  * Plugin URI:  https://github.com/WebberZone/webberzone-grok-account/
  * Description: Use your SuperGrok or X Premium subscription for Grok text and image generation in the WordPress AI Client, signing in with a device code instead of an xAI API key.
- * Version:     1.0.1
+ * Version:     1.0.2
  * Author:      WebberZone
  * Author URI:  https://webberzone.com
  * License:     GPL-2.0+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain: webberzone-grok-account
- * Domain Path: /languages
  * Requires PHP: 7.4
  * Requires at least: 7.0
  * GitHub Plugin URI: https://github.com/WebberZone/webberzone-grok-account/
@@ -41,7 +40,7 @@ if ( ! defined( 'WPINC' ) ) {
  * @since 1.0.0
  */
 if ( ! defined( 'WZGKA_VERSION' ) ) {
-	define( 'WZGKA_VERSION', '1.0.1' );
+	define( 'WZGKA_VERSION', '1.0.2' );
 }
 
 /**
