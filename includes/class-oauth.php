@@ -88,7 +88,7 @@ class OAuth extends OAuth_Client {
 					'expires_at'  => time() + $ttl,
 					'last_poll'   => 0,
 				);
-				set_transient( static::flow_key(), $flow, $ttl );
+				static::save_flow( $flow, $ttl );
 
 				return array(
 					'user_code'        => (string) $body['user_code'],
@@ -108,15 +108,24 @@ class OAuth extends OAuth_Client {
 	 * @throws RuntimeException When the flow expired, was denied, or xAI returned an error.
 	 */
 	public static function poll_device_flow() {
-		$flow = get_transient( static::flow_key() );
-		if ( ! is_array( $flow ) || $flow['expires_at'] < time() ) {
-			delete_transient( static::flow_key() );
-			throw new RuntimeException( esc_html__( 'The sign-in code expired. Start again.', 'webberzone-grok-account' ) );
-		}
-		if ( time() - $flow['last_poll'] < $flow['interval'] ) {
+		$flow = static::with_lock(
+			static function () {
+				$flow = static::fresh_flow();
+				if ( ! is_array( $flow ) || $flow['expires_at'] < time() ) {
+					delete_transient( static::flow_key() );
+					throw new RuntimeException( esc_html__( 'The sign-in code expired. Start again.', 'webberzone-grok-account' ) );
+				}
+				if ( time() - $flow['last_poll'] < $flow['interval'] ) {
+					return null;
+				}
+				$flow['last_poll'] = time();
+				static::save_flow( $flow, max( 1, $flow['expires_at'] - time() ) );
+				return $flow;
+			}
+		);
+		if ( null === $flow ) {
 			return 'pending';
 		}
-		$flow['last_poll'] = time();
 
 		$response = static::post_form(
 			self::ISSUER . '/oauth2/token',
@@ -127,8 +136,7 @@ class OAuth extends OAuth_Client {
 			)
 		);
 		$status   = (int) wp_remote_retrieve_response_code( $response );
-		$body     = json_decode( (string) wp_remote_retrieve_body( $response ), true );
-		$error    = is_array( $body ) && is_string( $body['error'] ?? null ) ? $body['error'] : '';
+		$error    = static::error_code( json_decode( (string) wp_remote_retrieve_body( $response ), true ) );
 
 		if ( 'authorization_pending' === $error || 'slow_down' === $error ) {
 			static::with_lock(
@@ -141,7 +149,7 @@ class OAuth extends OAuth_Client {
 						$current['interval'] += 5;
 					}
 					$current['last_poll'] = time();
-					set_transient( static::flow_key(), $current, max( 1, $current['expires_at'] - time() ) );
+					static::save_flow( $current, max( 1, $current['expires_at'] - time() ) );
 				}
 			);
 			return 'pending';

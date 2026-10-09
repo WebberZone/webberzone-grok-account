@@ -1,5 +1,23 @@
 == Changelog ==
 
+= 1.0.3 =
+
+Release date: TBD
+
+**Added**
+
+* Settings → Connectors warning when the authentication salts are stored in the database.
+
+**Security**
+
+* Encrypted the pending sign-in code stored while waiting for approval.
+
+**Fixed**
+
+* A token refresh rejected with HTTP 400 for a reason other than an expired or revoked session disconnected the account.
+* Uninstalling left pending sign-in data in the database.
+* Overlapping sign-in checks could poll xAI faster than the requested interval.
+
 = 1.0.2 =
 
 Release date: 3 October 2026

@@ -37,23 +37,7 @@ class Token_Store {
 	 * @return array|null Token data with access_token, refresh_token, id_token, account_id, email, plan and updated_at.
 	 */
 	public static function get() {
-		$raw = get_option( self::OPTION, '' );
-		if ( ! is_string( $raw ) || '' === $raw ) {
-			return null;
-		}
-		$decoded = base64_decode( $raw, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Decoding our own ciphertext envelope.
-		if ( false === $decoded || strlen( $decoded ) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ) {
-			return null;
-		}
-		$plain = sodium_crypto_secretbox_open(
-			substr( $decoded, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ),
-			substr( $decoded, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ),
-			self::key()
-		);
-		if ( false === $plain ) {
-			return null;
-		}
-		$data = json_decode( $plain, true );
+		$data = self::decrypt( get_option( self::OPTION, '' ) );
 		return is_array( $data ) && ! empty( $data['access_token'] ) ? $data : null;
 	}
 
@@ -66,9 +50,44 @@ class Token_Store {
 	 */
 	public static function save( array $data ) {
 		$data['updated_at'] = time();
-		$nonce              = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
-		$cipher             = sodium_crypto_secretbox( (string) wp_json_encode( $data ), $nonce, self::key() );
-		update_option( self::OPTION, base64_encode( $nonce . $cipher ), false ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Storing binary ciphertext as text.
+		update_option( self::OPTION, self::encrypt( $data ), false );
+	}
+
+	/**
+	 * Encrypts an array into a base64 envelope.
+	 *
+	 * @since 1.0.3
+	 *
+	 * @param array $data Data to encrypt.
+	 * @return string
+	 */
+	public static function encrypt( array $data ) {
+		$nonce = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
+		return base64_encode( $nonce . sodium_crypto_secretbox( (string) wp_json_encode( $data ), $nonce, self::key() ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Storing binary ciphertext as text.
+	}
+
+	/**
+	 * Decrypts an envelope produced by encrypt().
+	 *
+	 * @since 1.0.3
+	 *
+	 * @param mixed $raw Stored value.
+	 * @return array|null Null when missing, tampered or encrypted with another key.
+	 */
+	public static function decrypt( $raw ) {
+		if ( ! is_string( $raw ) || '' === $raw ) {
+			return null;
+		}
+		$decoded = base64_decode( $raw, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Decoding our own ciphertext envelope.
+		if ( false === $decoded || strlen( $decoded ) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ) {
+			return null;
+		}
+		$plain = sodium_crypto_secretbox_open( substr( $decoded, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ), substr( $decoded, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ), self::key() );
+		if ( false === $plain ) {
+			return null;
+		}
+		$data = json_decode( $plain, true );
+		return is_array( $data ) ? $data : null;
 	}
 
 	/**

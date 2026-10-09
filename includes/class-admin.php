@@ -38,6 +38,7 @@ class Admin {
 		add_action( 'wp_ajax_wzgka_cancel', array( __CLASS__, 'ajax_cancel' ) );
 		add_action( 'wp_ajax_wzgka_disconnect', array( __CLASS__, 'ajax_disconnect' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( WZGKA_PLUGIN_FILE ), array( __CLASS__, 'action_links' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'salt_notice' ) );
 	}
 
 	/**
@@ -126,5 +127,45 @@ class Admin {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( __( 'Sorry, you are not allowed to do that.', 'webberzone-grok-account' ), 403 );
 		}
+	}
+
+	/**
+	 * Warns on Settings → Connectors when the authentication salts live in the database rather than wp-config.php.
+	 *
+	 * @since 1.0.3
+	 */
+	public static function salt_notice() {
+		$screen = get_current_screen();
+		if ( ! $screen || 'options-connectors' !== $screen->id || ! current_user_can( 'manage_options' ) || self::salts_in_config() ) {
+			return;
+		}
+		printf(
+			'<div class="notice notice-warning"><p>%s</p></div>',
+			esc_html(
+				sprintf(
+					/* translators: %s: provider label. */
+					__( 'The key that encrypts the stored %s sign-in is derived from AUTH_KEY and AUTH_SALT. Define them in wp-config.php so the key is not stored in the database alongside the tokens. Changing them disconnects the account, so sign in again afterwards.', 'webberzone-grok-account' ),
+					Config::label()
+				)
+			)
+		);
+	}
+
+	/**
+	 * Whether wp_salt( 'auth' ) is backed by constants in wp-config.php.
+	 *
+	 * @since 1.0.3
+	 *
+	 * @return bool
+	 */
+	private static function salts_in_config() {
+		$salt = wp_salt( 'auth' );
+		foreach ( array( 'auth_key', 'auth_salt' ) as $option ) {
+			$value = get_site_option( $option );
+			if ( is_string( $value ) && '' !== $value && false !== strpos( $salt, $value ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

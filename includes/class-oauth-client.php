@@ -148,7 +148,7 @@ abstract class OAuth_Client {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return array|false Pending flow.
+	 * @return array|null Pending flow.
 	 */
 	protected static function fresh_flow() {
 		$key = static::flow_key();
@@ -156,7 +156,9 @@ abstract class OAuth_Client {
 			wp_cache_delete( $key, 'transient' );
 			wp_cache_delete( '_transient_' . $key, 'options' );
 		}
-		return get_transient( $key );
+		$flow = get_transient( $key );
+		// Flows started before encryption are stored as plain arrays.
+		return is_array( $flow ) ? $flow : Token_Store::decrypt( $flow );
 	}
 
 	/**
@@ -187,6 +189,34 @@ abstract class OAuth_Client {
 				}
 			}
 		);
+	}
+
+	/**
+	 * Returns the OAuth error code from a decoded response body.
+	 *
+	 * @since 1.0.3
+	 *
+	 * @param mixed $body Decoded response body.
+	 * @return string Error code, or an empty string.
+	 */
+	protected static function error_code( $body ) {
+		$error = is_array( $body ) ? ( $body['error'] ?? '' ) : '';
+		if ( is_array( $error ) ) {
+			$error = $error['code'] ?? '';
+		}
+		return is_string( $error ) ? $error : '';
+	}
+
+	/**
+	 * Stores the pending flow, encrypted.
+	 *
+	 * @since 1.0.3
+	 *
+	 * @param array $flow Pending flow.
+	 * @param int   $ttl  Lifetime in seconds.
+	 */
+	protected static function save_flow( array $flow, $ttl ) {
+		set_transient( static::flow_key(), Token_Store::encrypt( $flow ), $ttl );
 	}
 
 	/**
@@ -267,7 +297,8 @@ abstract class OAuth_Client {
 
 			$response = static::request_refresh( $tokens );
 			$status   = (int) wp_remote_retrieve_response_code( $response );
-			if ( 400 === $status || 401 === $status ) {
+			$error    = static::error_code( json_decode( (string) wp_remote_retrieve_body( $response ), true ) );
+			if ( 401 === $status || ( 400 === $status && ( 'invalid_grant' === $error || 0 === strpos( $error, 'refresh_token_' ) ) ) ) {
 				Token_Store::clear();
 				throw new RuntimeException(
 					esc_html(
@@ -460,7 +491,7 @@ abstract class OAuth_Client {
 		$raw    = (string) wp_remote_retrieve_body( $response );
 		$body   = json_decode( $raw, true );
 		if ( $status < 200 || $status >= 300 ) {
-			$code   = is_array( $body ) && is_string( $body['error'] ?? null ) ? $body['error'] : '';
+			$code   = static::error_code( $body );
 			$desc   = is_array( $body ) ? (string) ( $body['error_description'] ?? ( $body['error']['message'] ?? '' ) ) : '';
 			$detail = trim( $code . ' ' . $desc, " \n\r\t\v\0" );
 			throw new RuntimeException(
