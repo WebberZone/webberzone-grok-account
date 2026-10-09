@@ -30,6 +30,24 @@ class Token_Store {
 	const OPTION = 'wzgka_tokens';
 
 	/**
+	 * Transient that caches the live model list.
+	 *
+	 * @since 1.0.3
+	 *
+	 * @var string
+	 */
+	const MODELS_KEY = 'wzgka_models';
+
+	/**
+	 * Transient set when the live model list could not be fetched.
+	 *
+	 * @since 1.0.3
+	 *
+	 * @var string
+	 */
+	const MODELS_FAILED_KEY = 'wzgka_models_failed';
+
+	/**
 	 * Returns the decrypted token data, or null when not connected.
 	 *
 	 * @since 1.0.0
@@ -97,8 +115,9 @@ class Token_Store {
 	 */
 	public static function clear() {
 		delete_option( self::OPTION );
-		delete_transient( Model_Directory::CACHE_KEY );
-		delete_transient( Model_Directory::FAILED_KEY );
+		// Not via Model_Directory: loading it fatals when the AI Client is missing, and disconnect must still work.
+		delete_transient( self::MODELS_KEY );
+		delete_transient( self::MODELS_FAILED_KEY );
 	}
 
 	/**
