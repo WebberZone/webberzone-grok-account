@@ -4,7 +4,7 @@ Tags: ai, grok, xai, ai client, connectors
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -55,7 +55,7 @@ In the `wzgka_tokens` option, encrypted with a key derived from your site's auth
 
 = 1.0.3 =
 
-Release date: TBD
+Release date: 9 October 2026
 
 **Added**
 
@@ -107,3 +107,8 @@ Release date: 26 September 2026
 = Earlier versions =
 
 For the changelog of earlier versions, please refer to the [releases page on GitHub](https://github.com/WebberZone/webberzone-grok-account/releases).
+
+== Upgrade Notice ==
+
+= 1.0.3 =
+Security release. Encrypts the pending sign-in code, keeps accounts connected after temporary token errors and fixes a fatal error when disconnecting without the AI Client. Update recommended.

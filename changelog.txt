@@ -2,7 +2,7 @@
 
 = 1.0.3 =
 
-Release date: TBD
+Release date: 9 October 2026
 
 **Added**
 
