@@ -1,5 +1,17 @@
 == Changelog ==
 
+= 1.0.4 =
+
+Release date: 10 October 2026
+
+**Added**
+
+* `wzgka_min_timeout` filter for the minimum request timeout.
+
+**Changed**
+
+* Non-reasoning models keep the caller's request timeout, so a plugin can fall back to another provider sooner. Reasoning models, and requests without a timeout including the WordPress AI Client's 30-second default, still get at least 180 seconds.
+
 = 1.0.3 =
 
 Release date: 9 October 2026
@@ -7,11 +19,6 @@ Release date: 9 October 2026
 **Added**
 
 * Settings → Connectors warning when the authentication salts are stored in the database.
-* `wzgka_min_timeout` filter for the minimum request timeout.
-
-**Changed**
-
-* Non-reasoning models keep the caller's request timeout, so a plugin can fall back to another provider sooner. Reasoning models, and requests without a timeout including the WordPress AI Client's 30-second default, still get at least 180 seconds.
 
 **Security**
 

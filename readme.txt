@@ -4,7 +4,7 @@ Tags: ai, grok, xai, ai client, connectors
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.3
+Stable tag: 1.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,6 +53,18 @@ In the `wzgka_tokens` option, encrypted with a key derived from your site's auth
 
 == Changelog ==
 
+= 1.0.4 =
+
+Release date: 10 October 2026
+
+**Added**
+
+* `wzgka_min_timeout` filter for the minimum request timeout.
+
+**Changed**
+
+* Non-reasoning models keep the caller's request timeout, so a plugin can fall back to another provider sooner. Reasoning models, and requests without a timeout including the WordPress AI Client's 30-second default, still get at least 180 seconds.
+
 = 1.0.3 =
 
 Release date: 9 October 2026
@@ -60,11 +72,6 @@ Release date: 9 October 2026
 **Added**
 
 * Settings → Connectors warning when the authentication salts are stored in the database.
-* `wzgka_min_timeout` filter for the minimum request timeout.
-
-**Changed**
-
-* Non-reasoning models keep the caller's request timeout, so a plugin can fall back to another provider sooner. Reasoning models, and requests without a timeout including the WordPress AI Client's 30-second default, still get at least 180 seconds.
 
 **Security**
 
@@ -114,6 +121,9 @@ Release date: 26 September 2026
 For the changelog of earlier versions, please refer to the [releases page on GitHub](https://github.com/WebberZone/webberzone-grok-account/releases).
 
 == Upgrade Notice ==
+
+= 1.0.4 =
+Lets plugins set a shorter request timeout for non-reasoning models so they can fall back to another provider sooner.
 
 = 1.0.3 =
 Security release. Encrypts the pending sign-in code, keeps accounts connected after temporary token errors and fixes a fatal error when disconnecting without the AI Client. Update recommended.
