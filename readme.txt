@@ -60,6 +60,11 @@ Release date: 9 October 2026
 **Added**
 
 * Settings → Connectors warning when the authentication salts are stored in the database.
+* `wzgka_min_timeout` filter for the minimum request timeout.
+
+**Changed**
+
+* Non-reasoning models keep the caller's request timeout, so a plugin can fall back to another provider sooner. Reasoning models still get at least 180 seconds.
 
 **Security**
 
