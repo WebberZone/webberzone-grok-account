@@ -32,6 +32,7 @@ Not supported: video, speech, embeddings and image editing.
 | Filter | Purpose |
 | --- | --- |
 | `wzgka_fallback_models` | Models offered when the live model list can't be fetched (ID => `text` or `image`). |
+| `wzgka_min_timeout` | Minimum request timeout in seconds, given the model ID. Non-reasoning models keep the caller's timeout by default. |
 
 ## Shared files
 
