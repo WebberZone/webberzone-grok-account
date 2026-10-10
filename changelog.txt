@@ -11,7 +11,7 @@ Release date: 9 October 2026
 
 **Changed**
 
-* Non-reasoning models keep the caller's request timeout, so a plugin can fall back to another provider sooner. Reasoning models still get at least 180 seconds.
+* Non-reasoning models keep the caller's request timeout, so a plugin can fall back to another provider sooner. Reasoning models, and requests without a timeout including the WordPress AI Client's 30-second default, still get at least 180 seconds.
 
 **Security**
 
