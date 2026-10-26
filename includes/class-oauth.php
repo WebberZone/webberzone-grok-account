@@ -198,6 +198,24 @@ class OAuth extends OAuth_Client {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 1.0.4
+	 *
+	 * @param array $tokens Current token data.
+	 */
+	protected static function request_revoke( array $tokens ) {
+		return static::post_form(
+			self::ISSUER . '/oauth2/revoke',
+			array(
+				'token'           => $tokens['refresh_token'],
+				'token_type_hint' => 'refresh_token',
+				'client_id'       => self::CLIENT_ID,
+			)
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param  array $body     Token endpoint response.

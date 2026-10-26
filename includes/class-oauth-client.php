@@ -47,6 +47,15 @@ abstract class OAuth_Client {
 	const REFRESH_MARGIN = 300;
 
 	/**
+	 * Seconds to wait before retrying a failed refresh while the access token is still valid.
+	 *
+	 * @since 1.0.4
+	 *
+	 * @var int
+	 */
+	const REFRESH_BACKOFF = 60;
+
+	/**
 	 * Requests a device code and stores the pending flow for the current user.
 	 *
 	 * @since 1.0.0
@@ -78,6 +87,17 @@ abstract class OAuth_Client {
 	abstract protected static function request_refresh( array $tokens );
 
 	/**
+	 * Sends the request that revokes the refresh token.
+	 *
+	 * @since 1.0.4
+	 *
+	 * @param  array $tokens Current token data.
+	 * @return array HTTP response.
+	 * @throws RuntimeException On transport errors.
+	 */
+	abstract protected static function request_revoke( array $tokens );
+
+	/**
 	 * Saves a token response.
 	 *
 	 * @since 1.0.0
@@ -103,17 +123,45 @@ abstract class OAuth_Client {
 	}
 
 	/**
-	 * Disconnects the account and abandons the pending flow.
+	 * Disconnects the account, abandons the pending flow and revokes the refresh token with the provider.
+	 *
+	 * The local tokens are deleted first, so the site is disconnected even when revocation fails.
 	 *
 	 * @since 1.0.0
+	 * @since 1.0.4 Revokes the refresh token and returns whether that succeeded.
+	 *
+	 * @return bool True if the refresh token was revoked or there was none to revoke.
 	 */
 	public static function disconnect() {
-		static::with_lock(
+		$tokens = static::with_lock(
 			static function () {
+				$tokens = static::fresh_tokens();
 				delete_transient( static::flow_key() );
 				Token_Store::clear();
+				return $tokens;
 			}
 		);
+		return null === $tokens || static::revoke( $tokens );
+	}
+
+	/**
+	 * Revokes a refresh token with the provider.
+	 *
+	 * @since 1.0.4
+	 *
+	 * @param  array $tokens Token data.
+	 * @return bool True if the provider accepted the revocation or there was no refresh token.
+	 */
+	public static function revoke( array $tokens ) {
+		if ( empty( $tokens['refresh_token'] ) ) {
+			return true;
+		}
+		try {
+			$status = (int) wp_remote_retrieve_response_code( static::request_revoke( $tokens ) );
+		} catch ( RuntimeException $e ) {
+			return false;
+		}
+		return $status >= 200 && $status < 300;
 	}
 
 	/**
@@ -240,7 +288,7 @@ abstract class OAuth_Client {
 				)
 			);
 		}
-		if ( static::is_expiring( $tokens ) ) {
+		if ( static::is_expiring( $tokens ) && ! static::in_backoff( $tokens ) ) {
 			$tokens = static::refresh( false );
 		}
 		return $tokens;
@@ -250,6 +298,8 @@ abstract class OAuth_Client {
 	 * Refreshes the access token.
 	 *
 	 * Refresh tokens may rotate, so only one request may refresh at a time; others wait for its result.
+	 * If an unforced refresh fails while the access token is still valid, that token is returned and
+	 * refreshing pauses for REFRESH_BACKOFF seconds.
 	 *
 	 * @since 1.0.0
 	 *
@@ -291,13 +341,17 @@ abstract class OAuth_Client {
 			if ( null === $tokens ) {
 				throw new RuntimeException( esc_html( self::not_connected_message() ) );
 			}
-			if ( $tokens['access_token'] !== $before['access_token'] || ( ! $force && ! static::is_expiring( $tokens ) ) ) {
+			if ( $tokens['access_token'] !== $before['access_token'] || ( ! $force && ( ! static::is_expiring( $tokens ) || static::in_backoff( $tokens ) ) ) ) {
 				return $tokens;
 			}
 
-			$response = static::request_refresh( $tokens );
-			$status   = (int) wp_remote_retrieve_response_code( $response );
-			$error    = static::error_code( json_decode( (string) wp_remote_retrieve_body( $response ), true ) );
+			try {
+				$response = static::request_refresh( $tokens );
+			} catch ( RuntimeException $e ) {
+				return static::refresh_failed( $tokens, $force, $e );
+			}
+			$status = (int) wp_remote_retrieve_response_code( $response );
+			$error  = static::error_code( json_decode( (string) wp_remote_retrieve_body( $response ), true ) );
 			if ( 401 === $status || ( 400 === $status && ( 'invalid_grant' === $error || 0 === strpos( $error, 'refresh_token_' ) ) ) ) {
 				Token_Store::clear();
 				throw new RuntimeException(
@@ -310,10 +364,48 @@ abstract class OAuth_Client {
 					)
 				);
 			}
-			return static::store_tokens( static::decode( $response, $status ), $tokens );
+			try {
+				return static::store_tokens( static::decode( $response, $status ), $tokens );
+			} catch ( RuntimeException $e ) {
+				return static::refresh_failed( $tokens, $force, $e );
+			}
 		} finally {
 			static::release_lock( $owner );
 		}
+	}
+
+	/**
+	 * Handles a failed refresh: keeps using a still-valid access token, or rethrows.
+	 *
+	 * Must be called while holding the lock.
+	 *
+	 * @since 1.0.4
+	 *
+	 * @param  array            $tokens Current token data.
+	 * @param  bool             $force  Whether the refresh was forced because the provider rejected the access token.
+	 * @param  RuntimeException $e      The failure.
+	 * @return array Current token data, marked to pause refreshing.
+	 * @throws RuntimeException When the refresh was forced or the access token has expired.
+	 */
+	protected static function refresh_failed( array $tokens, $force, RuntimeException $e ) {
+		if ( $force || static::is_expiring( $tokens, 0 ) ) {
+			throw $e;
+		}
+		$tokens['retry_after'] = time() + static::REFRESH_BACKOFF;
+		Token_Store::save( $tokens );
+		return $tokens;
+	}
+
+	/**
+	 * Whether refreshing is paused after a failure and the access token is still valid.
+	 *
+	 * @since 1.0.4
+	 *
+	 * @param  array $tokens Token data.
+	 * @return bool
+	 */
+	protected static function in_backoff( array $tokens ) {
+		return (int) ( $tokens['retry_after'] ?? 0 ) > time() && ! static::is_expiring( $tokens, 0 );
 	}
 
 	/**
@@ -340,16 +432,18 @@ abstract class OAuth_Client {
 	 * Uses the stored expiry when there is one, otherwise the access token's own exp claim.
 	 *
 	 * @since 1.0.0
+	 * @since 1.0.4 Added the `$margin` parameter.
 	 *
-	 * @param  array $tokens Token data.
+	 * @param  array    $tokens Token data.
+	 * @param  int|null $margin Seconds before expiry that count as expiring; REFRESH_MARGIN when null, 0 for expired.
 	 * @return bool
 	 */
-	protected static function is_expiring( array $tokens ) {
+	protected static function is_expiring( array $tokens, $margin = null ) {
 		$exp = (int) ( $tokens['expires_at'] ?? 0 );
 		if ( $exp <= 0 ) {
 			$exp = (int) ( static::jwt_claims( $tokens['access_token'] )['exp'] ?? 0 );
 		}
-		return $exp > 0 && $exp - static::REFRESH_MARGIN <= time();
+		return $exp > 0 && $exp - ( null === $margin ? static::REFRESH_MARGIN : (int) $margin ) <= time();
 	}
 
 	/**

@@ -28,6 +28,15 @@ class Admin {
 	const NONCE = 'wzgka_admin';
 
 	/**
+	 * Transient prefix, followed by the user ID, flagging that the last disconnect could not revoke the sign-in.
+	 *
+	 * @since 1.0.4
+	 *
+	 * @var string
+	 */
+	const REVOKE_FAILED = 'wzgka_revoke_failed_';
+
+	/**
 	 * Registers the hooks.
 	 *
 	 * @since 1.0.0
@@ -39,6 +48,7 @@ class Admin {
 		add_action( 'wp_ajax_wzgka_disconnect', array( __CLASS__, 'ajax_disconnect' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( WZGKA_PLUGIN_FILE ), array( __CLASS__, 'action_links' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'salt_notice' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'revoke_notice' ) );
 	}
 
 	/**
@@ -110,7 +120,9 @@ class Admin {
 	public static function ajax_disconnect() {
 		self::verify();
 		try {
-			OAuth::disconnect();
+			if ( ! OAuth::disconnect() ) {
+				set_transient( self::REVOKE_FAILED . get_current_user_id(), 1, 5 * MINUTE_IN_SECONDS );
+			}
 			wp_send_json_success();
 		} catch ( \Exception $e ) {
 			wp_send_json_error( html_entity_decode( $e->getMessage(), ENT_QUOTES ) );
@@ -135,8 +147,7 @@ class Admin {
 	 * @since 1.0.3
 	 */
 	public static function salt_notice() {
-		$screen = get_current_screen();
-		if ( ! $screen || 'options-connectors' !== $screen->id || ! current_user_can( 'manage_options' ) || self::salts_in_config() ) {
+		if ( ! self::on_connectors_screen() || self::salts_in_config() ) {
 			return;
 		}
 		printf(
@@ -149,6 +160,41 @@ class Admin {
 				)
 			)
 		);
+	}
+
+	/**
+	 * Warns on Settings → Connectors, once, when the last disconnect could not revoke the sign-in with the provider.
+	 *
+	 * @since 1.0.4
+	 */
+	public static function revoke_notice() {
+		$key = self::REVOKE_FAILED . get_current_user_id();
+		if ( ! self::on_connectors_screen() || ! get_transient( $key ) ) {
+			return;
+		}
+		delete_transient( $key );
+		printf(
+			'<div class="notice notice-warning is-dismissible"><p>%s</p></div>',
+			esc_html(
+				sprintf(
+					/* translators: %s: service name. */
+					__( 'The account was disconnected from this site, but %s did not confirm that the sign-in was revoked. To make sure it can no longer be used, sign out of all sessions in your account settings.', 'webberzone-grok-account' ),
+					Config::VENDOR
+				)
+			)
+		);
+	}
+
+	/**
+	 * Whether the current screen is Settings → Connectors and the user can manage it.
+	 *
+	 * @since 1.0.4
+	 *
+	 * @return bool
+	 */
+	private static function on_connectors_screen() {
+		$screen = get_current_screen();
+		return $screen && 'options-connectors' === $screen->id && current_user_can( 'manage_options' );
 	}
 
 	/**

@@ -49,7 +49,9 @@ SuperGrok, or X Premium with Grok access. If sign-in works but generation return
 
 = Where are my tokens stored? =
 
-In the `wzgka_tokens` option, encrypted with a key derived from your site's authentication salts. Changing the salts in wp-config.php disconnects the account. Define `AUTH_KEY` and `AUTH_SALT` in wp-config.php; if they are missing, WordPress stores generated salts in the database and the plugin warns you on Settings → Connectors. Deactivating keeps the connection; uninstalling removes it.
+In the `wzgka_tokens` option, encrypted with a key derived from your site's authentication salts. Define `AUTH_KEY` and `AUTH_SALT` in wp-config.php; if they are missing, WordPress stores generated salts in the database and the plugin warns you on Settings → Connectors.
+
+Deactivating keeps the connection. Disconnecting or uninstalling deletes the tokens and revokes the sign-in with xAI; on multisite, uninstalling cleans up every site. If xAI does not confirm the revocation, Settings → Connectors asks you to sign out of all sessions in your account settings. Changing the salts makes the stored tokens unreadable but does not revoke them, so disconnect before you change them.
 
 == Changelog ==
 
