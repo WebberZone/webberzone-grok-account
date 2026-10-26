@@ -57,7 +57,7 @@ Deactivating keeps the connection. Disconnecting or uninstalling deletes the tok
 
 = 1.0.4 =
 
-Release date: 10 October 2026
+Release date: 26 October 2026
 
 **Added**
 
@@ -66,6 +66,15 @@ Release date: 10 October 2026
 **Changed**
 
 * Non-reasoning models keep the caller's request timeout, so a plugin can fall back to another provider sooner. Reasoning models, and requests without a timeout including the WordPress AI Client's 30-second default, still get at least 180 seconds.
+
+**Security**
+
+* Disconnecting and uninstalling now revoke the sign-in with xAI, with a warning on Settings → Connectors if xAI does not confirm it.
+
+**Fixed**
+
+* A temporary token refresh error failed AI requests while the current access token was still valid; the refresh now retries after a minute.
+* Uninstalling on multisite removed the stored tokens from the main site only.
 
 = 1.0.3 =
 
@@ -125,7 +134,4 @@ For the changelog of earlier versions, please refer to the [releases page on Git
 == Upgrade Notice ==
 
 = 1.0.4 =
-Lets plugins set a shorter request timeout for non-reasoning models so they can fall back to another provider sooner.
-
-= 1.0.3 =
-Security release. Encrypts the pending sign-in code, keeps accounts connected after temporary token errors and fixes a fatal error when disconnecting without the AI Client. Update recommended.
+Lets plugins set a shorter timeout for non-reasoning models to fall back to another provider sooner. Disconnecting now revokes the sign-in with xAI, uninstalling cleans up every site on multisite, and temporary token errors no longer interrupt AI requests.
