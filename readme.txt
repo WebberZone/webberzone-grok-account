@@ -57,7 +57,7 @@ Deactivating keeps the connection. Disconnecting or uninstalling deletes the tok
 
 = 1.0.4 =
 
-Release date: 26 October 2026
+Release date: 28 October 2026
 
 **Added**
 
