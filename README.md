@@ -27,6 +27,12 @@ Shares its sign-in, token storage and Connectors card design with [WebberZone Ch
 
 Not supported: video, speech, embeddings and image editing.
 
+## Disconnecting and token refresh
+
+Disconnecting clears the site's stored tokens and attempts to revoke the refresh token with xAI. If the provider does not confirm revocation, Settings → Connectors shows a notice to sign out of all sessions in your account settings. The site remains disconnected even if revocation fails.
+
+If an automatic refresh fails temporarily while the access token is still valid, the plugin keeps using that token and pauses refresh attempts for 60 seconds. An expired token or a forced refresh failure still returns an error. A rejected refresh token clears the saved sign-in and requires you to sign in again.
+
 ## Filters
 
 | Filter | Purpose |
