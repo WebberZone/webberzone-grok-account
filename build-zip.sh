@@ -26,6 +26,7 @@ phpunit/
 /build/
 vendor/
 docs/
+dev-helpers/
 _layouts/
 _includes/
 /site-assets/
