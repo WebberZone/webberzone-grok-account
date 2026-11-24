@@ -4,7 +4,7 @@ Tags: ai, grok, xai, ai client, connectors
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -13,6 +13,10 @@ Use your SuperGrok or X Premium subscription for Grok text and image generation 
 == Description ==
 
 WebberZone Grok Account adds a "Grok Account" provider to the WordPress AI Client. Instead of pasting an xAI API key, you sign in with your xAI account and usage counts against your SuperGrok or X Premium plan.
+
+= Maintenance =
+
+This single-provider plugin is in maintenance. WebberZone will ship security fixes and changes required when xAI changes or blocks the integration; there are no planned new features. Existing Grok-only installs can keep using it. For new sites that need ChatGPT and Grok together, use [WebberZone AI Account Connector](https://github.com/WebberZone/webberzone-ai-account-connector).
 
 = Features =
 
@@ -27,13 +31,13 @@ WebberZone Grok Account adds a "Grok Account" provider to the WordPress AI Clien
 * Video, speech and embeddings.
 * Image editing (sending an image to modify).
 
-= Important: how this works, and the risk =
+= Before you connect =
 
-This plugin signs in with the public OAuth client that Grok CLI-style coding agents use, then calls the regular xAI API with that sign-in. xAI has not published documentation permitting this for third-party apps.
+This plugin uses the public OAuth client used by Grok CLI-style coding agents to call the xAI API.
 
-* xAI may change or block this at any time.
-* Some subscriptions can sign in but are refused by the API (HTTP 403). The error is shown when you generate content; an xAI API key is the fallback.
-* Anyone with administrator access to your site, or any code running on it, can use your Grok plan while you are signed in. Use it on sites you control.
+* xAI may change or block this integration. Some plans can sign in but receive HTTP 403 when generating content. An xAI API key is the documented alternative.
+* WordPress features on the site can use your Grok plan allowance while the account is connected. Connect only on a site you control.
+* Review the [xAI Terms of Service](https://x.ai/legal/terms-of-service) before signing in.
 
 == Installation ==
 
@@ -54,6 +58,19 @@ In the `wzgka_tokens` option, encrypted with a key derived from your site's auth
 Deactivating keeps the connection. Disconnecting or uninstalling deletes the tokens and revokes the sign-in with xAI; on multisite, uninstalling cleans up every site. If xAI does not confirm the revocation, Settings → Connectors asks you to sign out of all sessions in your account settings. Changing the salts makes the stored tokens unreadable but does not revoke them, so disconnect before you change them.
 
 == Changelog ==
+
+= 1.0.5 =
+
+Release date: 24 November 2026
+
+**Changed**
+
+* Maintenance mode: security and provider-integration fixes only; no planned feature work.
+* Readme guidance for combined ChatGPT and Grok installs now points to WebberZone AI Account Connector.
+
+**Added**
+
+* A note on the Grok Account Connectors card before sign-in about the unofficial integration and plan usage.
 
 = 1.0.4 =
 
@@ -132,6 +149,9 @@ Release date: 26 September 2026
 For the changelog of earlier versions, please refer to the [releases page on GitHub](https://github.com/WebberZone/webberzone-grok-account/releases).
 
 == Upgrade Notice ==
+
+= 1.0.5 =
+Maintenance release with clearer Connectors guidance before sign-in. New combined installs should use WebberZone AI Account Connector. No action required for existing Grok-only setups.
 
 = 1.0.4 =
 Lets plugins set a shorter timeout for non-reasoning models to fall back to another provider sooner. Disconnecting now revokes the sign-in with xAI, uninstalling cleans up every site on multisite, and temporary token errors no longer interrupt AI requests.

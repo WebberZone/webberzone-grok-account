@@ -212,6 +212,7 @@ function AccountConnector( { name, description, logo } ) {
 		ConnectorItem,
 		{ className: 'connector-item--' + MODULE, logo, name, description, actionArea },
 		connected && config.account ? el( Text, { variant: 'muted', size: 12 }, config.account ) : null,
+		! connected && el( Note ),
 		error && el( Notice, { status: 'error', isDismissible: false }, error ),
 		isOpen &&
 			el( SignInModal, {

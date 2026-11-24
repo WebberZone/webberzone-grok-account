@@ -15,6 +15,14 @@ permalink: /
   </div>
 </div>
 
+
+<div class="home-section">
+  <div class="callout">
+    <h2>Maintenance</h2>
+    <p>This single-provider plugin is in maintenance: security and provider-integration fixes only. Existing Grok-only installs can keep using it. For new sites that need ChatGPT and Grok together, use <a href="https://github.com/WebberZone/webberzone-ai-account-connector">WebberZone AI Account Connector</a>.</p>
+  </div>
+</div>
+
 <div class="home-section">
   <div class="eyebrow">Overview</div>
   <h2 class="section-title" style="margin-bottom:8px;">Sign in once, use it everywhere</h2>
@@ -40,14 +48,15 @@ permalink: /
 
 <div class="home-section" style="padding-top:0;">
   <div class="eyebrow">Read this first</div>
-  <h2 class="section-title" style="margin-bottom:8px;">How it works, and the risk</h2>
+  <h2 class="section-title" style="margin-bottom:8px;">Before you connect</h2>
   <div class="callout">
-    <h3>Not an officially documented integration</h3>
-    <p>This plugin signs in with the public OAuth client used by Grok CLI-style coding agents, then calls the regular xAI API with that sign-in. xAI hasn't published documentation permitting this for third-party apps.</p>
+    <h3>Unofficial Grok subscription integration</h3>
+    <p>This plugin uses the public OAuth client used by Grok CLI-style coding agents to call the xAI API.</p>
     <ul>
-      <li>xAI may change or block this at any time.</li>
-      <li>Some subscriptions can sign in but are refused by the API (HTTP 403). The error is shown when you generate content; an xAI API key is the fallback.</li>
-      <li>Anyone with administrator access to your site, or any code running on it, can use your Grok plan while you are signed in. Use it on sites you control.</li>
+      <li>xAI may change or block this integration.</li>
+      <li>Some plans can sign in but receive HTTP 403 when generating content. An xAI API key is the documented alternative.</li>
+      <li>WordPress features on the site can use your Grok plan allowance while the account is connected. Connect only on a site you control.</li>
+      <li>Review the <a href="https://x.ai/legal/terms-of-service">xAI Terms of Service</a> before signing in.</li>
     </ul>
   </div>
 </div>

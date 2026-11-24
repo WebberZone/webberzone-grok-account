@@ -62,8 +62,8 @@ class Config {
 	 */
 	public static function note() {
 		return array(
-			'text' => __( 'Sign in with an xAI account that has SuperGrok or X Premium. Some plans can sign in but are refused by the API; if so, the error is shown when you generate content.', 'webberzone-grok-account' ),
-			'url'  => '',
+			'text' => __( 'This connector uses an unofficial Grok subscription integration. xAI may change or block it. WordPress features on this site can use your plan allowance while connected. Connect only on a site you control. A successful sign-in does not guarantee API access for your plan. Review <a>xAI’s Terms of Service</a> before signing in.', 'webberzone-grok-account' ),
+			'url'  => 'https://x.ai/legal/terms-of-service',
 		);
 	}
 
